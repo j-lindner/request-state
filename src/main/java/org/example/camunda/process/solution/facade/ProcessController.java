@@ -1,58 +1,48 @@
 package org.example.camunda.process.solution.facade;
 
 import io.camunda.zeebe.client.ZeebeClient;
-import org.example.camunda.process.solution.ProcessConstants;
-import org.example.camunda.process.solution.ProcessVariables;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.example.camunda.process.solution.service.StateConversationRepository;
+import org.example.camunda.process.solution.service.StateService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/process")
 public class ProcessController {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProcessController.class);
-  private final ZeebeClient zeebe;
 
-  public ProcessController(ZeebeClient client) {
-    this.zeebe = client;
-  }
+    @Autowired
+    private ZeebeClient zeebe;
 
-  @PostMapping("/start")
-  public void startProcessInstance(@RequestBody ProcessVariables variables) {
+    @Autowired
+    private StateService stateService;
 
-    LOG.info(
-        "Starting process `" + ProcessConstants.BPMN_PROCESS_ID + "` with variables: " + variables);
+    private final Map<String, CompletableFuture<Map<String, Object>>> map = new HashMap<>();
+    @Autowired
+    private StateConversationRepository stateConversationRepository;
 
+    @PostMapping("/start")
+  public void startProcessInstance(@RequestBody Map<String, Object> variables) {
     zeebe
         .newCreateInstanceCommand()
-        .bpmnProcessId(ProcessConstants.BPMN_PROCESS_ID)
+        .bpmnProcessId("request-state-process")
         .latestVersion()
         .variables(variables)
         .send();
   }
 
-  @PostMapping("/message/{messageName}/{correlationKey}")
-  public void publishMessage(
-      @PathVariable String messageName,
-      @PathVariable String correlationKey,
-      @RequestBody ProcessVariables variables) {
+    @GetMapping("/state/{myId}")
+    public CompletableFuture<Map<String, Object>> getState(@PathVariable String myId) {
+        try {
+            return stateService.getState(myId);
+        } catch (Exception e) {
+            stateConversationRepository.removeConversation(myId);
+            throw new RuntimeException(e);
+        }
+    }
 
-    LOG.info(
-        "Publishing message `{}` with correlation key `{}` and variables: {}",
-        messageName,
-        correlationKey,
-        variables);
-
-    zeebe
-        .newPublishMessageCommand()
-        .messageName(messageName)
-        .correlationKey(correlationKey)
-        .variables(variables)
-        .send();
-  }
 }
