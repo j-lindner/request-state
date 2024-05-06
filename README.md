@@ -1,5 +1,9 @@
 # Example how to request the current state from Zeebe
 
+Since Zeebe implements CQRS, it doesn't offer an API to request the current state.
+Operate does offer APIs to read Process Variables (https://docs.camunda.io/docs/apis-tools/operate-api/specifications/search/), but is eventual consistent.
+
+This projects showcases an option to retrieve the current data from Zeebe via a non-interrupting event-based sub process.
 
 ## Run
 
@@ -22,10 +26,6 @@ curl http://localhost:8080/process/state/42 -H "Content-Type: application/json"
 ## How does it work?
 
 ### Sequence
-Since Zeebe implements CQRS, it doesn't offer an API to request the current state.
-Operate does offer APIs to read Process Variables (https://docs.camunda.io/docs/apis-tools/operate-api/specifications/search/), but is eventual consistent.
-
-This projects showcases an option to retrieve the current data from Zeebe via the following steps:
 
 0. Client Application retrieves REST Request to get current state from Zeebe
 1. Client Application sends a Message "RequestStateMessage" with correlationKey "myId" to Zeebe
